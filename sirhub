@@ -300,4 +300,19 @@ local function fit()
 end
 local function cameraChanged()
     if viewportConnection then viewportConnection:Disconnect() end
-    if workspace.CurrentCamera then viewportConnection=workspace.Current
+    if workspace.CurrentCamera then viewportConnection=workspace.CurrentCamera then viewportConnection=workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fit) end
+    fit()
+end
+connect(workspace:GetPropertyChangedSignal("CurrentCamera"),cameraChanged)
+cameraChanged()
+if config.minimized then collapse(true) end
+local function stop()
+    if not alive then return end
+    save();alive=false
+    if viewportConnection then viewportConnection:Disconnect() end
+    for _,connection in ipairs(connections) do connection:Disconnect() end
+    table.clear(connections)
+    gui:Destroy()
+end
+env.SirhubBlockPanelStop=stop
+gui.Destroying:Connect(stop)
