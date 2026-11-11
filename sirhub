@@ -1,0 +1,303 @@
+if not game:IsLoaded() then game.Loaded:Wait() end
+local Players=game:GetService("Players")
+local TweenService=game:GetService("TweenService")
+local UserInputService=game:GetService("UserInputService")
+local RunService=game:GetService("RunService")
+local HttpService=game:GetService("HttpService")
+local LP=Players.LocalPlayer
+local playerGui=LP:WaitForChild("PlayerGui")
+local env=type(getgenv)=="function" and getgenv() or _G
+if type(env["Sirhub🧀BlockPanelStop"])=="function" then pcall(env["Sirhub🧀BlockPanelStop"]) end
+local existing=playerGui:FindFirstChild("Sirhub🧀BlockPanel")
+if existing then existing:Destroy() end
+local alive=true
+local connections={}
+local configPath="Sirhub🧀BlockPanel.json"
+local config={x=nil,y=nil,width=320,height=300,minimized=false,visible=true}
+pcall(function()
+    if type(readfile)~="function" then return end
+    local saved=HttpService:JSONDecode(readfile(configPath))
+    if type(saved)~="table" then return end
+    for key,value in pairs(saved) do
+        if key=="x" or key=="y" or key=="width" or key=="height" then
+            if type(value)=="number" and value==value and math.abs(value)<10000 then config[key]=value end
+        elseif (key=="minimized" or key=="visible") and type(value)=="boolean" then config[key]=value end
+    end
+end)
+local function connect(signal,fn)
+    local connection=signal:Connect(fn)
+    connections[#connections+1]=connection
+    return connection
+end
+local function create(class,props,parent)
+    local object=Instance.new(class)
+    for key,value in pairs(props or {}) do object[key]=value end
+    object.Parent=parent
+    return object
+end
+local function corner(object,radius) create("UICorner",{CornerRadius=UDim.new(0,radius or 9)},object) end
+local function stroke(object) return create("UIStroke",{Color=Color3.fromRGB(48,48,55),Thickness=1,ApplyStrokeMode=Enum.ApplyStrokeMode.Border},object) end
+local function tween(object,props) TweenService:Create(object,TweenInfo.new(0.16,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),props):Play() end
+local function label(parent,text,size)
+    return create("TextLabel",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text=text,TextSize=size or 11,Font=Enum.Font.GothamMedium,TextColor3=Color3.fromRGB(240,240,245),TextXAlignment=Enum.TextXAlignment.Left},parent)
+end
+local function button(parent,text)
+    local b=create("TextButton",{Text=text,Font=Enum.Font.GothamMedium,TextSize=11,TextColor3=Color3.fromRGB(240,240,245),BackgroundColor3=Color3.fromRGB(24,24,29),BackgroundTransparency=0.3,BorderSizePixel=0,AutoButtonColor=false},parent)
+    corner(b,8);stroke(b)
+    connect(b.MouseEnter,function() tween(b,{BackgroundColor3=Color3.fromRGB(42,42,49)}) end)
+    connect(b.MouseLeave,function() tween(b,{BackgroundColor3=Color3.fromRGB(24,24,29)}) end)
+    return b
+end
+local gui=create("ScreenGui",{Name="Sirhub🧀BlockPanel",IgnoreGuiInset=true,ResetOnSpawn=false,DisplayOrder=1000,ZIndexBehavior=Enum.ZIndexBehavior.Sibling},playerGui)
+local viewport=workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280,720)
+local expanded=UDim2.fromOffset(math.clamp(config.width,250,math.max(250,viewport.X-16)),math.clamp(config.height,180,math.max(180,viewport.Y-16)))
+local window=create("Frame",{Name="BlockPanel",Size=expanded,Position=UDim2.fromOffset(config.x or math.max(8,(viewport.X-expanded.X.Offset)/2),config.y or math.max(8,(viewport.Y-expanded.Y.Offset)*0.56)),BackgroundColor3=Color3.fromRGB(12,12,16),BackgroundTransparency=0.3,BorderSizePixel=0,ClipsDescendants=true,Visible=config.visible,Active=true},gui)
+corner(window,14)
+local rim=stroke(window);rim.Color=Color3.new(1,1,1);rim.Thickness=1.2
+local gradient=create("UIGradient",{Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(50,50,60)),ColorSequenceKeypoint.new(0.4,Color3.fromRGB(65,65,78)),ColorSequenceKeypoint.new(0.5,Color3.fromRGB(225,225,240)),ColorSequenceKeypoint.new(0.6,Color3.fromRGB(65,65,78)),ColorSequenceKeypoint.new(1,Color3.fromRGB(50,50,60))})},rim)
+local header=create("Frame",{Name="Header",Size=UDim2.new(1,0,0,40),BackgroundTransparency=1,Active=true},window)
+local title=label(header,"Sirhub🧀  /  Block Panel",12);title.Font=Enum.Font.GothamBold;title.Position=UDim2.fromOffset(12,0);title.Size=UDim2.new(1,-78,1,0)
+local function control(text,x)
+    return create("TextButton",{Size=UDim2.fromOffset(26,28),Position=UDim2.new(1,x,0,6),BackgroundTransparency=1,Text=text,TextSize=16,Font=Enum.Font.GothamMedium,TextColor3=Color3.fromRGB(240,240,245),AutoButtonColor=false},header)
+end
+local minimize=control("−",-60)
+local close=control("×",-32)
+create("Frame",{Position=UDim2.fromOffset(12,39),Size=UDim2.new(1,-24,0,1),BackgroundColor3=Color3.fromRGB(45,45,52),BorderSizePixel=0},header)
+local scroll=create("ScrollingFrame",{Name="Players",Position=UDim2.fromOffset(12,48),Size=UDim2.new(1,-24,1,-120),AutomaticCanvasSize=Enum.AutomaticSize.Y,CanvasSize=UDim2.new(),ScrollBarThickness=3,ScrollBarImageColor3=Color3.fromRGB(140,140,150),BackgroundTransparency=1,BorderSizePixel=0},window)
+create("UIListLayout",{Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},scroll)
+create("UIPadding",{PaddingTop=UDim.new(0,1),PaddingLeft=UDim.new(0,1),PaddingRight=UDim.new(0,4),PaddingBottom=UDim.new(0,4)},scroll)
+local footer=create("Frame",{Position=UDim2.new(0,12,1,-63),Size=UDim2.new(1,-24,0,52),BackgroundTransparency=1},window)
+local blockAll=button(footer,"Block all");blockAll.Size=UDim2.new(0.5,-4,0,30)
+local blockNearest=button(footer,"Block nearest");blockNearest.Size=UDim2.new(0.5,-4,0,30);blockNearest.Position=UDim2.new(0.5,4,0,0)
+local status=label(footer,"Ready",9);status.TextColor3=Color3.fromRGB(156,156,168);status.Position=UDim2.fromOffset(0,35);status.Size=UDim2.new(1,-20,0,15);status.TextTruncate=Enum.TextTruncate.AtEnd
+local function showToast(message)
+    if alive then status.Text=tostring(message) end
+end
+local _shBlockPanelGui
+local _shBlockPanelMinimized = false
+local _shBlockPanelRefreshBusy = false
+local _shBlockBusy = false
+
+local _shBlockPromptAndPress
+do
+    local StarterGuiS = game:GetService("StarterGui")
+    local VIM         = game:GetService("VirtualInputManager")
+    local GuiServiceS = game:GetService("GuiService")
+    local cooldowns   = {}
+
+    local function isBlocked(target)
+        local ok, res = pcall(function() return LP:IsBlocked(target.UserId) end)
+        if ok and res then return true end
+        local ok2, list = pcall(function() return StarterGuiS:GetCore("GetBlockedUserIds") end)
+        if ok2 and type(list) == "table" then
+            for _, id in ipairs(list) do
+                if id == target.UserId then return true end
+            end
+        end
+        return false
+    end
+
+    local function fastConfirmUntilBlocked(target, timeout)
+        local res = GuiServiceS:GetScreenResolution()
+        local cx = res.X * 0.5
+        local yPoints = { res.Y * 0.64, res.Y * 0.60, res.Y * 0.67, res.Y * 0.62 }  
+        local start = tick()
+        timeout = timeout or 1.0
+        while alive and tick() - start < timeout do
+            for _, y in ipairs(yPoints) do
+                 
+                for _ = 1, 3 do
+                    VIM:SendMouseButtonEvent(cx, y, 0, true, game, 0)
+                    VIM:SendMouseButtonEvent(cx, y, 0, false, game, 0)
+                    task.wait(0.03)
+                end
+                if isBlocked(target) then return true end
+            end
+            if isBlocked(target) then return true end
+            task.wait(0.05)
+        end
+        return false
+    end
+
+    local function doBlock(target)
+        if not alive or not target or target == LP or not target.Parent then return false end
+
+        local now = tick()
+        if cooldowns[target.UserId] and now - cooldowns[target.UserId] < 1.5 then
+            return false
+        end
+        cooldowns[target.UserId] = now
+
+        if isBlocked(target) then return true end
+
+        local success = pcall(function()
+            StarterGuiS:SetCore("PromptBlockPlayer", target)
+        end)
+        if not success then return false end
+
+        task.wait(0.1)
+        return fastConfirmUntilBlocked(target, 1.5)
+    end
+
+    _shBlockPromptAndPress = function(target, waitResult)
+        if not alive or not target or target == LP or not target.Parent then return false end
+        local function run()
+            while alive and _shBlockBusy do task.wait(0.03) end
+            if not alive then return false end
+            _shBlockBusy = true
+            local ok, res = pcall(doBlock, target)
+            _shBlockBusy = false
+            if not ok then
+                showToast("Block: " .. tostring(res), false)
+                return false
+            end
+            if alive then showToast(res==true and ("Blocked @"..target.Name) or ("Could not confirm block for @"..target.Name)) end
+            return res == true
+        end
+        if waitResult then return run() end
+        task.spawn(run)
+        return true
+    end
+end
+
+local function _shFindNearestPlayer(maxDistance)
+    local character = LP.Character
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    local target, nearest = nil, maxDistance or math.huge
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LP and player.Character then
+            local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
+            local targetHum = player.Character:FindFirstChildOfClass("Humanoid")
+            if targetRoot and targetHum and targetHum.Health > 0 then
+                local distance = (targetRoot.Position - root.Position).Magnitude
+                if distance <= nearest then nearest, target = distance, player end
+            end
+        end
+    end
+    return target
+end
+
+local function _shBlockNearest()
+    local character = LP.Character
+    if not (character and character:FindFirstChild("HumanoidRootPart")) then
+        showToast("Block: character not ready", false)
+        return
+    end
+    local target = _shFindNearestPlayer()
+    if target then _shBlockPromptAndPress(target) else showToast("Block: player not found", false) end
+end
+
+local function _shBlockAll()
+    task.spawn(function()
+        for _, player in ipairs(Players:GetPlayers()) do
+            if not alive then break end
+            if player ~= LP and player.Parent then
+                _shBlockPromptAndPress(player, true)
+                task.wait(0.05)
+            end
+        end
+    end)
+end
+
+local launcher=button(gui,"Block");launcher.Name="OpenBlockPanel";launcher.Size=UDim2.fromOffset(56,34);launcher.Position=UDim2.fromOffset(12,math.max(8,viewport.Y/2-17));launcher.Visible=not window.Visible
+local grip=create("TextButton",{Name="Resize",AnchorPoint=Vector2.new(1,1),Position=UDim2.new(1,-2,1,-2),Size=UDim2.fromOffset(24,24),BackgroundTransparency=1,Text="",AutoButtonColor=false,ZIndex=10},window)
+for y=0,2 do for x=0,2 do if x+y>=2 then create("Frame",{Position=UDim2.fromOffset(7+x*4,7+y*4),Size=UDim2.fromOffset(2,2),BackgroundColor3=Color3.fromRGB(156,156,168),BorderSizePixel=0,ZIndex=11},grip) end end end
+local operation
+local launcherDragged=false
+local minimized=false
+local function clamp(frame)
+    local v=workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or viewport
+    local p,size=frame.AbsolutePosition,frame.AbsoluteSize
+    local dx=math.clamp(p.X,8,math.max(8,v.X-size.X-8))-p.X
+    local dy=math.clamp(p.Y,8,math.max(8,v.Y-size.Y-8))-p.Y
+    if math.abs(dx)>0.5 or math.abs(dy)>0.5 then frame.Position=UDim2.new(frame.Position.X.Scale,frame.Position.X.Offset+dx,frame.Position.Y.Scale,frame.Position.Y.Offset+dy) end
+end
+local function save()
+    config.x=window.Position.X.Offset;config.y=window.Position.Y.Offset
+    config.width=expanded.X.Offset;config.height=expanded.Y.Offset
+    config.minimized=minimized;config.visible=window.Visible
+    if type(writefile)=="function" then pcall(function() writefile(configPath,HttpService:JSONEncode(config)) end) end
+end
+local function collapse(on)
+    minimized=on
+    if on then expanded=window.Size end
+    scroll.Visible=not on;footer.Visible=not on;grip.Visible=not on
+    minimize.Text=on and "+" or "−"
+    tween(window,{Size=on and UDim2.fromOffset(expanded.X.Offset,40) or expanded})
+    save()
+end
+connect(minimize.Activated,function() collapse(not minimized) end)
+connect(close.Activated,function() window.Visible=false;launcher.Visible=true;save() end)
+connect(launcher.Activated,function() if launcherDragged then return end;window.Visible=true;launcher.Visible=false;clamp(window);save() end)
+local function start(input,kind,frame)
+    if operation or (input.UserInputType~=Enum.UserInputType.MouseButton1 and input.UserInputType~=Enum.UserInputType.Touch) then return end
+    if kind=="launcher" then launcherDragged=false end
+    operation={pointer=input,kind=kind,frame=frame,start=Vector2.new(input.Position.X,input.Position.Y),position=frame.Position,absolute=frame.AbsolutePosition,size=frame.Size}
+end
+connect(header.InputBegan,function(input)
+    for _,b in ipairs({minimize,close}) do local p,z=b.AbsolutePosition,b.AbsoluteSize;if input.Position.X>=p.X and input.Position.X<=p.X+z.X and input.Position.Y>=p.Y and input.Position.Y<=p.Y+z.Y then return end end
+    start(input,"drag",window)
+end)
+connect(grip.InputBegan,function(input) start(input,"resize",window) end)
+connect(launcher.InputBegan,function(input) start(input,"launcher",launcher) end)
+connect(UserInputService.InputChanged,function(input)
+    local op=operation
+    if not op then return end
+    if op.pointer.UserInputType==Enum.UserInputType.Touch then if input~=op.pointer then return end
+    elseif input.UserInputType~=Enum.UserInputType.MouseMovement then return end
+    local delta=Vector2.new(input.Position.X,input.Position.Y)-op.start
+    if delta.Magnitude<3 then return end
+    local v=workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or viewport
+    if op.kind=="resize" then
+        local maxW,maxH=math.max(1,v.X-op.absolute.X-8),math.max(1,v.Y-op.absolute.Y-8)
+        expanded=UDim2.fromOffset(math.clamp(op.size.X.Offset+delta.X,math.min(250,maxW),maxW),math.clamp(op.size.Y.Offset+delta.Y,math.min(180,maxH),maxH))
+        window.Size=expanded
+    else
+        if op.kind=="launcher" then launcherDragged=true end
+        local size=op.frame.AbsoluteSize
+        local dx=math.clamp(op.absolute.X+delta.X,8,math.max(8,v.X-size.X-8))-op.absolute.X
+        local dy=math.clamp(op.absolute.Y+delta.Y,8,math.max(8,v.Y-size.Y-8))-op.absolute.Y
+        op.frame.Position=UDim2.new(op.position.X.Scale,op.position.X.Offset+dx,op.position.Y.Scale,op.position.Y.Offset+dy)
+    end
+end)
+connect(UserInputService.InputEnded,function(input)
+    if not operation then return end
+    if input==operation.pointer or (operation.pointer.UserInputType==Enum.UserInputType.MouseButton1 and input.UserInputType==Enum.UserInputType.MouseButton1) then operation=nil;save() end
+end)
+local rows={}
+local function removePlayer(target)
+    local row=rows[target]
+    if row then row:Destroy();rows[target]=nil end
+end
+local function addPlayer(target)
+    if target==LP or rows[target] then return end
+    local row=create("Frame",{Name=target.Name,Size=UDim2.new(1,0,0,46),BackgroundColor3=Color3.fromRGB(22,22,27),BackgroundTransparency=0.3,BorderSizePixel=0,LayoutOrder=target.UserId},scroll)
+    corner(row,9);stroke(row);rows[target]=row
+    local avatar=create("ImageLabel",{Position=UDim2.fromOffset(7,7),Size=UDim2.fromOffset(32,32),BackgroundTransparency=1,Image=string.format("rbxthumb://type=AvatarHeadShot&id=%d&w=48&h=48",target.UserId)},row);corner(avatar,8)
+    local name=label(row,target.DisplayName,11);name.Font=Enum.Font.GothamBold;name.Position=UDim2.fromOffset(47,6);name.Size=UDim2.new(1,-124,0,17);name.TextTruncate=Enum.TextTruncate.AtEnd
+    local username=label(row,"@"..target.Name,9);username.TextColor3=Color3.fromRGB(156,156,168);username.Position=UDim2.fromOffset(47,24);username.Size=UDim2.new(1,-124,0,14);username.TextTruncate=Enum.TextTruncate.AtEnd
+    local b=button(row,"Block");b.Position=UDim2.new(1,-69,0.5,-14);b.Size=UDim2.fromOffset(62,28)
+    b.Activated:Connect(function() showToast("Blocking @"..target.Name);_shBlockPromptAndPress(target) end)
+end
+connect(Players.PlayerAdded,addPlayer)
+connect(Players.PlayerRemoving,removePlayer)
+for _,target in ipairs(Players:GetPlayers()) do addPlayer(target) end
+connect(blockAll.Activated,_shBlockAll)
+connect(blockNearest.Activated,_shBlockNearest)
+local elapsed=0
+connect(RunService.Heartbeat,function(dt)
+    elapsed=elapsed+dt
+    if elapsed<1/30 or not alive or not window.Visible then return end
+    elapsed=0;gradient.Rotation=(os.clock()*42)%360
+end)
+local viewportConnection
+local function fit()
+    local v=workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or viewport
+    expanded=UDim2.fromOffset(math.min(expanded.X.Offset,v.X-16),math.min(expanded.Y.Offset,v.Y-16))
+    window.Size=minimized and UDim2.fromOffset(expanded.X.Offset,40) or expanded
+    clamp(window);clamp(launcher)
+end
+local function cameraChanged()
+    if viewportConnection then viewportConnection:Disconnect() end
+    if workspace.CurrentCamera then viewportConnection=workspace.Current
